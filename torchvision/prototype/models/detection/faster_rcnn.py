@@ -1,6 +1,7 @@
 from typing import Any, Optional, Union
 
-from torchvision.prototype.transforms import CocoEval
+from torch import nn
+from torchvision.prototype.transforms import ObjectDetectionEval
 from torchvision.transforms.functional import InterpolationMode
 
 from ....models.detection.faster_rcnn import (
@@ -31,53 +32,59 @@ __all__ = [
 
 
 _COMMON_META = {
+    "task": "image_object_detection",
+    "architecture": "FasterRCNN",
+    "publication_year": 2015,
     "categories": _COCO_CATEGORIES,
     "interpolation": InterpolationMode.BILINEAR,
 }
 
 
 class FasterRCNN_ResNet50_FPN_Weights(WeightsEnum):
-    Coco_V1 = Weights(
+    COCO_V1 = Weights(
         url="https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
-        transforms=CocoEval,
+        transforms=ObjectDetectionEval,
         meta={
             **_COMMON_META,
+            "num_params": 41755286,
             "recipe": "https://github.com/pytorch/vision/tree/main/references/detection#faster-r-cnn-resnet-50-fpn",
             "map": 37.0,
         },
     )
-    default = Coco_V1
+    DEFAULT = COCO_V1
 
 
 class FasterRCNN_MobileNet_V3_Large_FPN_Weights(WeightsEnum):
-    Coco_V1 = Weights(
+    COCO_V1 = Weights(
         url="https://download.pytorch.org/models/fasterrcnn_mobilenet_v3_large_fpn-fb6a3cc7.pth",
-        transforms=CocoEval,
+        transforms=ObjectDetectionEval,
         meta={
             **_COMMON_META,
+            "num_params": 19386354,
             "recipe": "https://github.com/pytorch/vision/tree/main/references/detection#faster-r-cnn-mobilenetv3-large-fpn",
             "map": 32.8,
         },
     )
-    default = Coco_V1
+    DEFAULT = COCO_V1
 
 
 class FasterRCNN_MobileNet_V3_Large_320_FPN_Weights(WeightsEnum):
-    Coco_V1 = Weights(
+    COCO_V1 = Weights(
         url="https://download.pytorch.org/models/fasterrcnn_mobilenet_v3_large_320_fpn-907ea3f9.pth",
-        transforms=CocoEval,
+        transforms=ObjectDetectionEval,
         meta={
             **_COMMON_META,
+            "num_params": 19386354,
             "recipe": "https://github.com/pytorch/vision/tree/main/references/detection#faster-r-cnn-mobilenetv3-large-320-fpn",
             "map": 22.8,
         },
     )
-    default = Coco_V1
+    DEFAULT = COCO_V1
 
 
 @handle_legacy_interface(
-    weights=("pretrained", FasterRCNN_ResNet50_FPN_Weights.Coco_V1),
-    weights_backbone=("pretrained_backbone", ResNet50_Weights.ImageNet1K_V1),
+    weights=("pretrained", FasterRCNN_ResNet50_FPN_Weights.COCO_V1),
+    weights_backbone=("pretrained_backbone", ResNet50_Weights.IMAGENET1K_V1),
 )
 def fasterrcnn_resnet50_fpn(
     *,
@@ -97,17 +104,17 @@ def fasterrcnn_resnet50_fpn(
     elif num_classes is None:
         num_classes = 91
 
-    trainable_backbone_layers = _validate_trainable_layers(
-        weights is not None or weights_backbone is not None, trainable_backbone_layers, 5, 3
-    )
+    is_trained = weights is not None or weights_backbone is not None
+    trainable_backbone_layers = _validate_trainable_layers(is_trained, trainable_backbone_layers, 5, 3)
+    norm_layer = misc_nn_ops.FrozenBatchNorm2d if is_trained else nn.BatchNorm2d
 
-    backbone = resnet50(weights=weights_backbone, progress=progress, norm_layer=misc_nn_ops.FrozenBatchNorm2d)
+    backbone = resnet50(weights=weights_backbone, progress=progress, norm_layer=norm_layer)
     backbone = _resnet_fpn_extractor(backbone, trainable_backbone_layers)
     model = FasterRCNN(backbone, num_classes=num_classes, **kwargs)
 
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(progress=progress))
-        if weights == FasterRCNN_ResNet50_FPN_Weights.Coco_V1:
+        if weights == FasterRCNN_ResNet50_FPN_Weights.COCO_V1:
             overwrite_eps(model, 0.0)
 
     return model
@@ -128,11 +135,11 @@ def _fasterrcnn_mobilenet_v3_large_fpn(
     elif num_classes is None:
         num_classes = 91
 
-    trainable_backbone_layers = _validate_trainable_layers(
-        weights is not None or weights_backbone is not None, trainable_backbone_layers, 6, 3
-    )
+    is_trained = weights is not None or weights_backbone is not None
+    trainable_backbone_layers = _validate_trainable_layers(is_trained, trainable_backbone_layers, 6, 3)
+    norm_layer = misc_nn_ops.FrozenBatchNorm2d if is_trained else nn.BatchNorm2d
 
-    backbone = mobilenet_v3_large(weights=weights_backbone, progress=progress, norm_layer=misc_nn_ops.FrozenBatchNorm2d)
+    backbone = mobilenet_v3_large(weights=weights_backbone, progress=progress, norm_layer=norm_layer)
     backbone = _mobilenet_extractor(backbone, True, trainable_backbone_layers)
     anchor_sizes = (
         (
@@ -155,8 +162,8 @@ def _fasterrcnn_mobilenet_v3_large_fpn(
 
 
 @handle_legacy_interface(
-    weights=("pretrained", FasterRCNN_MobileNet_V3_Large_FPN_Weights.Coco_V1),
-    weights_backbone=("pretrained_backbone", MobileNet_V3_Large_Weights.ImageNet1K_V1),
+    weights=("pretrained", FasterRCNN_MobileNet_V3_Large_FPN_Weights.COCO_V1),
+    weights_backbone=("pretrained_backbone", MobileNet_V3_Large_Weights.IMAGENET1K_V1),
 )
 def fasterrcnn_mobilenet_v3_large_fpn(
     *,
@@ -186,8 +193,8 @@ def fasterrcnn_mobilenet_v3_large_fpn(
 
 
 @handle_legacy_interface(
-    weights=("pretrained", FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.Coco_V1),
-    weights_backbone=("pretrained_backbone", MobileNet_V3_Large_Weights.ImageNet1K_V1),
+    weights=("pretrained", FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.COCO_V1),
+    weights_backbone=("pretrained_backbone", MobileNet_V3_Large_Weights.IMAGENET1K_V1),
 )
 def fasterrcnn_mobilenet_v3_large_320_fpn(
     *,

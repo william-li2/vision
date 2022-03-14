@@ -121,8 +121,8 @@ class AnchorGenerator(nn.Module):
         dtype, device = feature_maps[0].dtype, feature_maps[0].device
         strides = [
             [
-                torch.tensor(image_size[0] // g[0], dtype=torch.int64, device=device),
-                torch.tensor(image_size[1] // g[1], dtype=torch.int64, device=device),
+                torch.empty((), dtype=torch.int64, device=device).fill_(image_size[0] // g[0]),
+                torch.empty((), dtype=torch.int64, device=device).fill_(image_size[1] // g[1]),
             ]
             for g in grid_sizes
         ]
@@ -239,13 +239,15 @@ class DefaultBoxGenerator(nn.Module):
         return torch.cat(default_boxes, dim=0)
 
     def __repr__(self) -> str:
-        s = self.__class__.__name__ + "("
-        s += "aspect_ratios={aspect_ratios}"
-        s += ", clip={clip}"
-        s += ", scales={scales}"
-        s += ", steps={steps}"
-        s += ")"
-        return s.format(**self.__dict__)
+        s = (
+            f"{self.__class__.__name__}("
+            f"aspect_ratios={self.aspect_ratios}"
+            f", clip={self.clip}"
+            f", scales={self.scales}"
+            f", steps={self.steps}"
+            ")"
+        )
+        return s
 
     def forward(self, image_list: ImageList, feature_maps: List[Tensor]) -> List[Tensor]:
         grid_sizes = [feature_map.shape[-2:] for feature_map in feature_maps]
@@ -255,16 +257,15 @@ class DefaultBoxGenerator(nn.Module):
         default_boxes = default_boxes.to(device)
 
         dboxes = []
+        x_y_size = torch.tensor([image_size[1], image_size[0]], device=default_boxes.device)
         for _ in image_list.image_sizes:
             dboxes_in_image = default_boxes
             dboxes_in_image = torch.cat(
                 [
-                    dboxes_in_image[:, :2] - 0.5 * dboxes_in_image[:, 2:],
-                    dboxes_in_image[:, :2] + 0.5 * dboxes_in_image[:, 2:],
+                    (dboxes_in_image[:, :2] - 0.5 * dboxes_in_image[:, 2:]) * x_y_size,
+                    (dboxes_in_image[:, :2] + 0.5 * dboxes_in_image[:, 2:]) * x_y_size,
                 ],
                 -1,
             )
-            dboxes_in_image[:, 0::2] *= image_size[1]
-            dboxes_in_image[:, 1::2] *= image_size[0]
             dboxes.append(dboxes_in_image)
         return dboxes

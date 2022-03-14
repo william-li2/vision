@@ -351,7 +351,7 @@ jobs:
       - install_torchvision
       - install_prototype_dependencies
       - pip_install:
-          args: scipy pycocotools
+          args: scipy pycocotools h5py
           descr: Install optional dependencies
       - run:
           name: Enable prototype tests
@@ -848,7 +848,7 @@ jobs:
     executor:
       name: windows-gpu
     environment:
-      CUDA_VERSION: "11.1"
+      CUDA_VERSION: "11.3"
       PYTHON_VERSION: << parameters.python_version >>
     steps:
       - checkout
@@ -1069,7 +1069,8 @@ jobs:
             # Don't use "checkout" step since it uses ssh, which cannot git push
             # https://circleci.com/docs/2.0/configuration-reference/#checkout
             set -ex
-            tag=${CIRCLE_TAG:1:5}
+            # Change v1.12.1rc1 into 1.12 (only major.minor)
+            tag=$(echo $CIRCLE_TAG | sed -e 's/v*\([0-9]*\.[0-9]*\).*/\1/')
             target=${tag:-main}
             ~/workspace/.circleci/build_docs/commit_docs.sh ~/workspace $target
 

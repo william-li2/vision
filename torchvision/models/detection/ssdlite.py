@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 from ..._internally_replaced_utils import load_state_dict_from_url
-from ...ops.misc import ConvNormActivation
+from ...ops.misc import Conv2dNormActivation
 from ...utils import _log_api_usage_once
 from .. import mobilenet
 from . import _utils as det_utils
@@ -29,7 +29,7 @@ def _prediction_block(
 ) -> nn.Sequential:
     return nn.Sequential(
         # 3x3 depthwise with stride 1 and padding 1
-        ConvNormActivation(
+        Conv2dNormActivation(
             in_channels,
             in_channels,
             kernel_size=kernel_size,
@@ -47,11 +47,11 @@ def _extra_block(in_channels: int, out_channels: int, norm_layer: Callable[..., 
     intermediate_channels = out_channels // 2
     return nn.Sequential(
         # 1x1 projection to half output channels
-        ConvNormActivation(
+        Conv2dNormActivation(
             in_channels, intermediate_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=activation
         ),
         # 3x3 depthwise with stride 2 and padding 1
-        ConvNormActivation(
+        Conv2dNormActivation(
             intermediate_channels,
             intermediate_channels,
             kernel_size=3,
@@ -61,7 +61,7 @@ def _extra_block(in_channels: int, out_channels: int, norm_layer: Callable[..., 
             activation_layer=activation,
         ),
         # 1x1 projetion to output channels
-        ConvNormActivation(
+        Conv2dNormActivation(
             intermediate_channels, out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=activation
         ),
     )
@@ -252,7 +252,7 @@ def ssdlite320_mobilenet_v3_large(
         "detections_per_img": 300,
         "topk_candidates": 300,
         # Rescale the input in a way compatible to the backbone:
-        # The following mean/std rescale the data from [0, 1] to [-1, -1]
+        # The following mean/std rescale the data from [0, 1] to [-1, 1]
         "image_mean": [0.5, 0.5, 0.5],
         "image_std": [0.5, 0.5, 0.5],
     }
